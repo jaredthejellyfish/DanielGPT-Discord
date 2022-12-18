@@ -74,9 +74,9 @@ async def on_message(ctx: discord.ApplicationContext):
 
     mention = f'<@{bot.user.id}>'
 
-    response = await message_handler(ctx)
-    await ctx.channel.send(response)
-    return
-
+    if mention in ctx.content or isinstance(ctx.channel, discord.channel.DMChannel):
+        response = await message_handler(ctx)
+        await ctx.channel.send(response)
+        return
 
 bot.run(DC_API_KEY)
