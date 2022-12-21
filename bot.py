@@ -66,7 +66,9 @@ async def memd(ctx):
     await ctx.defer()
     cpu_percent, memory_usage, available_memory, load_avg = await get_machine_stats(ctx)
     embed = discord.Embed(
-        title="DanielGPT", description="I'm still alive, thanks for checking :)", color=0xF44336
+        title="DanielGPT",
+        description="I'm still alive, thanks for checking :)",
+        color=0xF44336,
     )
     embed.add_field(name="Load (avg)", value=f"{load_avg}%", inline=False)
     embed.add_field(name="Ping", value=f"{round(bot.latency * 1000)}ms", inline=True)
@@ -75,6 +77,7 @@ async def memd(ctx):
     embed.add_field(name="CPU %", value=f"{cpu_percent}%", inline=True)
     embed.add_field(name="Memory %", value=f"{memory_usage}%", inline=True)
     embed.add_field(name="Memory (avail)", value=f"{available_memory}%", inline=True)
+    embed.set_footer(text="Powered by OpenAI")
 
     await ctx.respond(embed=embed)
 
