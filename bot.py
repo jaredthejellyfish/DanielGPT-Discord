@@ -31,8 +31,8 @@ async def on_ready():
 
 @bot.slash_command(name="ping", description="Pings the bot")
 async def ping(ctx):
-    """This function is called when the '/ping' command is used. It prints the bot
-    latency to the console and returns an embed message with the bot latency."""
+    """This function is called when the '/ping' command is used. It returns
+    an embed message with the bot latency."""
 
     embed = discord.Embed(color=0xF44336)
     embed.add_field(
@@ -51,7 +51,13 @@ async def help(ctx):
     embed = discord.Embed(color=0xF44336)
     embed.add_field(
         name="🤖 Bot Commands",
-        value="`/ping` - Pings the bot\n`/memd` - Sets the memory depth of the bot\n`/info` - Gives info about the bot's execution environment\n`/imagine` - Imagines an image from a prompt\n`/help` - Shows the help menu\n",
+        value="""
+        `/ping` - Pings the bot\n
+        `/memd` - Sets the memory depth of the bot\n
+        `/info` - Gives info about the bot's execution environment\n
+        `/imagine` - Imagines an image from a prompt\n
+        `/help` - Shows the help menu\n
+        """,
         inline=False,
     )
     await ctx.respond(embed=embed)
