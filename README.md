@@ -4,7 +4,6 @@
 ![Uptime Robot status](https://img.shields.io/uptimerobot/status/m793352412-5898d8b663862851def8eff7?style=for-the-badge) 
 ![Uptime Robot ratio (7 days)](https://img.shields.io/uptimerobot/ratio/7/m793352412-5898d8b663862851def8eff7?style=for-the-badge) 
 ![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability/jaredthejellyfish/DanielGPT-Discord?style=for-the-badge) 
-![Code Climate technical debt](https://img.shields.io/codeclimate/tech-debt/jaredthejellyfish/DanielGPT-Discord?style=for-the-badge)
 
 This is a discord bot created using the py-cord library and OpenAI's GPT-3 API. It is designed to simulate a human conversation and has slash commands to control the bot's memory depth and display system information.
 
