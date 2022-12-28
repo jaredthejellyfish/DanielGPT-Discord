@@ -10,10 +10,10 @@ This is a discord bot created using the py-cord library and OpenAI's GPT-3 API. 
 
 ## Requirements
 
-- py-cord
-- OpenAI API key
-- DC API Key
-- Memory Depth
+- The py-cord python module
+- An OpenAI API key
+- An Discord API Key
+- Memory Depth varibale in your environment.
 
 ## Usage
 
