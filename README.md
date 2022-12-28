@@ -1,4 +1,5 @@
-# DanielGPT Bot
+# DanielGPT Bot 
+[![wakatime](https://wakatime.com/badge/user/61cabc84-7492-4f6a-b301-5bbbdd324bc5/project/3b7696d7-f06f-4368-8f4e-665a7e01dabf.svg)](https://wakatime.com/badge/user/61cabc84-7492-4f6a-b301-5bbbdd324bc5/project/3b7696d7-f06f-4368-8f4e-665a7e01dabf) ![Uptime Robot status](https://img.shields.io/uptimerobot/status/m793352412-5898d8b663862851def8eff7) ![Uptime Robot ratio (7 days)](https://img.shields.io/uptimerobot/ratio/7/m793352412-5898d8b663862851def8eff7)
 
 This is a discord bot created using the py-cord library and OpenAI's GPT-3 API. It is designed to simulate a human conversation and has slash commands to control the bot's memory depth and display system information.
 
