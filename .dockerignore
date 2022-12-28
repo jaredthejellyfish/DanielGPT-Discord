@@ -1,0 +1,7 @@
+fly.toml
+.vscode
+.env
+.gitignore
+.*
+env.sh
+danielgpt/
