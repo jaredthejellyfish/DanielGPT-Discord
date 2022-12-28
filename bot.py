@@ -13,7 +13,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 DC_API_KEY = os.getenv("DC_API_KEY")
 
 memory_depth = int(os.getenv("MEMORY_DEPTH"))
-
+memory_mode = os.getenv("MEMORY_MODE")
+cap_tokens = int(os.getenv("MAX_TOKENS"))
 
 @bot.event
 async def on_ready():
@@ -42,6 +43,16 @@ async def ping(ctx):
     )
     await ctx.respond(embed=embed)
 
+@bot.slash_command(name="memdump", description="Dumps the bot's memory into the chat.")
+async def memdump(ctx):
+    """This function is called when the '/memdump' command is used. It returns
+    a message with the bot's memory."""
+
+    await ctx.defer()
+
+    context = await context_generator(ctx, bot, limit=memory_depth, mode=memory_mode, cap_tokens=cap_tokens)
+
+    await ctx.respond(context[-1999:])
 
 @bot.slash_command(name="help", description="Shows the help menu")
 async def help(ctx):
@@ -78,6 +89,35 @@ async def memd(ctx, depth):
     )
     await ctx.respond(embed=embed)
 
+@bot.slash_command(name="memm", description="Sets the memory mode of the bot")
+async def memm(ctx, mode):
+    """This function is called when the '/memm' command is used. It sets the memory mode of
+    the bot and returns an embed message with the updated memory mode."""
+
+    global memory_mode
+
+    os.environ["MEMORY_MODE"] = mode
+    memory_mode = mode
+
+    embed = discord.Embed(
+        title="Memory mode is now:", description=f"{memory_mode}", color=0xF44336
+    )
+    await ctx.respond(embed=embed)
+
+@bot.slash_command(name="max_tokens", description="Sets the max tokens per request.")
+async def max_tokens(ctx, tokens):
+    """This function is called when the '/max_tokens' command is used. It sets the max tokens per request
+    and returns an embed message with the updated max_tokens."""
+
+    global cap_tokens
+
+    os.environ["MAX_TOKENS"] = str(tokens)
+    cap_tokens = int(tokens)
+
+    embed = discord.Embed(
+        title="Max tokens are now:", description=f"{cap_tokens}", color=0xF44336
+    )
+    await ctx.respond(embed=embed)
 
 @bot.slash_command(
     name="info", description="Gives info about the bot's execution environment"
@@ -95,12 +135,12 @@ async def info(ctx):
         color=0xF44336,
     )
     embed.add_field(name="Load (avg)", value=f"{load_avg}%", inline=False)
-    embed.add_field(name="Ping", value=f"{round(bot.latency * 1000)}ms", inline=True)
-    embed.add_field(name="Memdepth", value=f"{memory_depth} messages", inline=True)
-    embed.add_field(name=chr(173), value=chr(173))
+    embed.add_field(name="Mdepth", value=f"{memory_depth} msg", inline=True)
+    embed.add_field(name="Mmode", value=f"{memory_mode}", inline=True)
+    embed.add_field(name="Maxtokns", value=cap_tokens, inline=True)
     embed.add_field(name="CPU %", value=f"{cpu_percent}%", inline=True)
     embed.add_field(name="Memory %", value=f"{memory_usage}%", inline=True)
-    embed.add_field(name="Memory (avail)", value=f"{available_memory}%", inline=True)
+    embed.add_field(name="Memory", value=f"{available_memory}%", inline=True)
     embed.set_footer(text="Powered by OpenAI")
 
     await ctx.respond(embed=embed)
@@ -134,11 +174,11 @@ async def on_message(ctx: discord.ApplicationContext):
 
     try:
         if mention in ctx.content or isinstance(ctx.channel, discord.channel.DMChannel):
-            response = await message_handler(ctx, bot, memory_depth)
+            response = await message_handler(ctx, bot, memory_depth, memory_mode, cap_tokens)
             await ctx.channel.send(response)
             return
     except Exception as e:
-        await ctx.channel.send(e)
+        await ctx.channel.send(f"Error: {e}")
 
 
 bot.run(DC_API_KEY)
