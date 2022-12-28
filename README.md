@@ -13,7 +13,7 @@ This is a discord bot created using the py-cord library and OpenAI's GPT-3 API. 
 - py-cord
 - OpenAI API key
 - DC API Key
-- Memory Depth (minimum of 10)
+- Memory Depth
 
 ## Usage
 
