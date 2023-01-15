@@ -1,0 +1,9 @@
+.*
+.sh
+*.txt
+fly.toml
+.vscode
+.env
+.gitignore
+.*
+__*
