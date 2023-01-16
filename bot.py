@@ -53,24 +53,24 @@ async def imagine(ctx, prompt: str,
 
     await ctx.defer()
 
+    width, height, inference_steps, guideance_scale = make_input_safe(width,
+                                                                      height,
+                                                                      inference_steps,
+                                                                      guideance_scale)
+
     embed = make_embed(prompt, width, height, inference_steps,
                        guideance_scale, negative_prompt)
 
-    width,
-    height,
-    inference_steps,
-    guideance_scale = make_input_safe(width,
-                                      height,
-                                      inference_steps,
-                                      guideance_scale)
+    url = make_url(prompt, negative_prompt, inference_steps,
+                   guideance_scale, height, width)
 
     message = await ctx.respond(embed=embed)
-    logging.info(f"imageine: Generating image with prompt: {prompt}.")
+    logging.info(f'imageine: Generating image with prompt: "{prompt}".')
 
     f_name = f"{uuid.uuid4()}.png"
     async with aiohttp.ClientSession() as session:
         logging.info(f"imageine: Fetching image...")
-        async with session.get(make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, width)) as response:
+        async with session.get(url) as response:
             if response.status == 200:
                 logging.info(f"imageine: Image received.")
                 pic = discord.File(io.BytesIO(await response.read()), filename=f_name)
