@@ -1,18 +1,19 @@
 import os
+import io
 import uuid
+import json
 import openai
 import asyncio
+import aiohttp
 import logging
 import discord
-from discord.ext import commands
-from discord.ui import Button, View
-import aiohttp
 import textwrap
-import multiprocessing as mp
+from discord import option
 from DanielGPT import DanielGPT
-import io
+from discord.ext import commands
+import numpy as np
 
-from helpers import make_url, make_embed, make_buttons, make_input_safe
+from helpers import make_url, make_embed, make_buttons, make_input_safe, check_upscaler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,8 +22,10 @@ bot = discord.Bot(intents=intents)
 
 chat_engine = DanielGPT()
 
+CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 
 DC_API_KEY = os.getenv("DC_API_KEY")
+IMG_SERVER_URL = os.getenv("IMG_SERVER_URL")
 memory_depth = int(os.getenv("MEMORY_DEPTH"))
 cap_tokens = int(os.getenv("MAX_TOKENS"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -43,13 +46,69 @@ async def ping(ctx):
     logging.info(f"Tested latency is {round(bot.latency * 1000)}ms")
 
 
-@bot.slash_command(name="imagine", description="imagines a prompt")
+@bot.slash_command(name="upscale", description="Upscales an image")
+@option(
+    "attachment",
+    discord.Attachment,
+    description="An image to upscale",
+    # The default value will be None if the user doesn't provide a file.
+    required=True,
+)
+async def upscale(ctx, attachment: discord.Attachment, upscaler: str = "espcn", scale: int = 2):
+    await ctx.defer()
+
+    if check_upscaler(upscaler, scale):
+        if attachment.content_type == "image/png" or attachment.content_type == "image/jpeg":
+
+            logging.info(
+                f"upscale: Upscaling image with {upscaler} and scale {scale}.")
+
+            attachment_url = attachment.url
+            url = f"{IMG_SERVER_URL}/upscale?upscaler={upscaler}&scale={scale}"
+            f_name = f"{uuid.uuid4()}.png"
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(attachment_url) as resp:
+                    if resp.status == 200:
+                        image_buffer = io.BytesIO(await resp.read())
+                    else:
+                        raise Exception("Failed to fetch image from Discord.")
+
+                async with session.post(url, data={"image": image_buffer.read()}) as resp:
+                    if resp.status == 200:
+                        # image = io.BytesIO(await resp.read())
+                        headers = {
+                            'Authorization': f'Client-ID aa216c6f748dd63'
+                        }
+
+                        r = await resp.read()
+
+                        payload = {
+                            'image': r,
+                        }
+
+                        async with aiohttp.request('post', f"https://api.imgur.com/3/image", headers=headers, data=payload) as resp:
+                            resp.raise_for_status
+                            imgur_response = json.loads(await resp.text())
+                            await ctx.respond(content=imgur_response['data']['link'])
+                    else:
+                        raise Exception("Failed to upscale image.")
+        else:
+            logging.error("upscale: Invalid image type")
+            raise Exception("Invalid image type")
+    else:
+        logging.error("upscale: Invalid upscaler or scale")
+        raise Exception("Invalid upscaler or scale")
+
+
+@bot.slash_command(name="imagine", description="Imagines a prompt")
 async def imagine(ctx, prompt: str,
                   negative_prompt: str = None,
                   inference_steps: int = 50,
                   guideance_scale: float = 7.5,
                   height: int = 512,
-                  width: int = 512):
+                  width: int = 512,
+                  seed: int = np.random.randint(10000000000, 1000000000000)):
 
     await ctx.defer()
 
@@ -59,10 +118,10 @@ async def imagine(ctx, prompt: str,
                                                                       guideance_scale)
 
     embed = make_embed(prompt, width, height, inference_steps,
-                       guideance_scale, negative_prompt)
+                       guideance_scale, negative_prompt, seed)
 
     url = make_url(prompt, negative_prompt, inference_steps,
-                   guideance_scale, height, width)
+                   guideance_scale, height, width, seed)
 
     message = await ctx.respond(embed=embed)
     logging.info(f'imageine: Generating image with prompt: "{prompt}".')

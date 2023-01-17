@@ -13,6 +13,19 @@ IMG_SERVER_URL = os.getenv("IMG_SERVER_URL")
 UPSCALER = os.getenv("UPSCALER")
 
 
+possible_upscalers = {
+    "espcn": [2, 4],
+    "edsr": [2, 4],
+    "lapsrn": [2, 4, 8]
+}
+
+def check_upscaler(upscaler, scale):
+    if upscaler in possible_upscalers.keys():
+        if scale in possible_upscalers[upscaler]:
+            return True
+        else:
+            return False
+
 def make_input_safe(width, height, inference_steps, guideance_scale):
 
     if inference_steps > 100:
@@ -46,7 +59,7 @@ def make_input_safe(width, height, inference_steps, guideance_scale):
     return width, height, inference_steps, guideance_scale
 
 
-def make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, width):
+def make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, width, seed):
 
     base_url = IMG_SERVER_URL
 
@@ -63,12 +76,15 @@ def make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, 
 
     base_url += f"&width={width}"
 
+    if seed is not None:
+        base_url += f"&seed={seed}"
+
     logging.debug(f"Query url is '{base_url}'")
 
     return base_url
 
 
-def make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt):
+def make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt, seed):
 
     embed = discord.Embed(title="DanielGPT - StableDiffusionAPI",
                           description=f"{prompt}")
@@ -79,6 +95,7 @@ def make_embed(prompt, width, height, inference_steps, guideance_scale, negative
     embed.add_field(name="Guideance Scale", value=guideance_scale, inline=True)
     embed.add_field(name="\u200b", value="\u200b", inline=True)
     embed.add_field(name="Negative Prompt", value=negative_prompt, inline=True)
+    embed.add_field(name="Seed", value=seed, inline=False)
 
     return embed
 
@@ -93,6 +110,7 @@ async def upscale_button_callback(interaction):
     guideance_scale = float(interaction.message.embeds[0].fields[4].value)
     height = int(interaction.message.embeds[0].fields[1].value) * 4
     width = int(interaction.message.embeds[0].fields[0].value) * 4
+    seed = int(interaction.message.embeds[0].fields[7].value)
 
     attachment_url = interaction.message.attachments[0].url
     f_name = f"{uuid.uuid4()}.png"
@@ -103,11 +121,11 @@ async def upscale_button_callback(interaction):
             else:
                 raise Exception("Failed to fetch image.")
 
-        async with session.post("http://10.10.20.10:9568/upscale?upscaler=espcn&scale=4", data={"image": image_buffer.read()}) as resp:
+        async with session.post(f"{IMG_SERVER_URL}/upscale?upscaler=espcn&scale=4", data={"image": image_buffer.read()}) as resp:
             if resp.status == 200:
                 pic = discord.File(io.BytesIO(await resp.read()), filename=f_name)
-                logging.info(f"imageine: Upscaled image.")
-                await interaction.edit_original_response(file=pic, embed=make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt))
+                logging.info(f"imagine: Upscaled image.")
+                await interaction.edit_original_response(file=pic, embed=make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt, seed))
             else:
                 raise Exception("Failed to upscale image.")
 
@@ -117,29 +135,30 @@ async def regenerate_button_callback(interaction):
     await interaction.edit_original_response(file=discord.File("./temporary_regen_image.gif"))
 
     prompt = interaction.message.embeds[0].description
-    negative_prompt = interaction.message.embeds[0].fields[6].value
+    width = int(interaction.message.embeds[0].fields[0].value)
+    height = int(interaction.message.embeds[0].fields[1].value)
     inference_steps = int(interaction.message.embeds[0].fields[3].value)
     guideance_scale = float(interaction.message.embeds[0].fields[4].value)
-    height = int(interaction.message.embeds[0].fields[1].value)
-    width = int(interaction.message.embeds[0].fields[0].value)
+    negative_prompt = interaction.message.embeds[0].fields[6].value
+    seed = int(interaction.message.embeds[0].fields[7].value)
 
     width, height, inference_steps, guideance_scale = make_input_safe(
         width, height, inference_steps, guideance_scale)
 
-    logging.info(f"imageine: Regenerating image image...")
+    logging.info(f"imagine: Regenerating image...")
 
     f_name = f"{uuid.uuid4()}.png"
     async with aiohttp.ClientSession() as session:
-        logging.info(f"imageine: Fetching image...")
-        async with session.get(make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, width)) as response:
+        logging.info(f"imagine: Fetching image...")
+        async with session.get(make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, width, seed)) as response:
             if response.status == 200:
-                logging.info(f"imageine: Image received.")
+                logging.info(f"imagine: Image received.")
                 pic = discord.File(io.BytesIO(await response.read()), filename=f_name)
-                logging.info(f"imageine: Converted image to discord.File.")
-                await interaction.edit_original_response(file=pic, embed=make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt))
-                logging.info(f"imageine: Image sent to client.")
+                logging.info(f"imagine: Converted image to discord.File.")
+                await interaction.edit_original_response(file=pic, embed=make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt, seed))
+                logging.info(f"imagine: Image sent to client.")
             else:
-                raise Exception(f"imageine: Error: {response.status}")
+                raise Exception(f"imagine: Error: {response.status}")
 
 
 async def freeze_button_callback(interaction):
