@@ -1,19 +1,20 @@
-import os
-import io
-import uuid
-import json
-import openai
 import asyncio
-import aiohttp
+import io
+import json
 import logging
-import discord
+import os
 import textwrap
-from discord import option
-from DanielGPT import DanielGPT
-from discord.ext import commands
-import numpy as np
+import uuid
 
-from helpers import make_url, make_embed, make_buttons, make_input_safe, check_upscaler
+import aiohttp
+import discord
+import numpy as np
+import openai
+from DanielGPT import DanielGPT
+from discord import option
+from discord.ext import commands
+from helpers import (ImageButtons, check_upscaler, make_embed, make_input_safe,
+                     make_url)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -134,7 +135,7 @@ async def imagine(ctx, prompt: str,
                 logging.info(f"imageine: Image received.")
                 pic = discord.File(io.BytesIO(await response.read()), filename=f_name)
                 logging.info(f"imageine: Converted image to discord.File.")
-                await message.edit(view=make_buttons(), embed=embed, file=pic)
+                await message.edit(view=ImageButtons(), embed=embed, file=pic)
                 logging.info(f"imageine: Image sent to client.")
             else:
                 raise Exception(f"imageine: Error: {response.status}")
@@ -143,6 +144,8 @@ async def imagine(ctx, prompt: str,
 @bot.slash_command(name="write", description="Write a prompt")
 async def write(ctx, prompt: str, cap_tokens: int = 2000):
     await ctx.defer()
+
+    prompt = f"Please write: {prompt}"
 
     logging.info(f"write:prompt={prompt}")
     response = await chat_engine.contextless_runner(prompt=prompt, cap_tokens=cap_tokens)
@@ -160,8 +163,33 @@ async def write(ctx, prompt: str, cap_tokens: int = 2000):
             await ctx.send(chunk)
 
 
+@bot.slash_command(name="code", description="Code a prompt")
+async def code(ctx, prompt: str, cap_tokens: int = 2000, language: str = "python"):
+    await ctx.defer()
+
+    prompt = f"language: {language}\n{prompt}"
+
+    logging.info(f"code:prompt={prompt}")
+    response = await chat_engine.contextless_runner(prompt=prompt, cap_tokens=cap_tokens)
+    if len(response) < 2000:
+        response = f"```{response}```"
+        await ctx.respond(response)
+    else:
+        chunks = textwrap.wrap(
+            response, width=1900, break_long_words=False, replace_whitespace=False)
+
+        logging.info(
+            f"code:error: Message too long split into ({len(chunks)}) chunks.")
+        await ctx.respond(chunks[0])
+        for chunk in chunks[1:]:
+            chunk = f"```{chunk}```"
+            await asyncio.sleep(0.1)
+            await ctx.send(chunk)
+
+
 @bot.event
 async def on_ready():
+    bot.add_view(ImageButtons())
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name="Human Simulator"))
     logging.info("Conntected to Discord servers as DanielGPT#0832")
 
