@@ -107,7 +107,7 @@ class ImageButtons(discord.ui.View):
         guideance_scale = float(interaction.message.embeds[0].fields[4].value)
         height = int(interaction.message.embeds[0].fields[1].value) * 4
         width = int(interaction.message.embeds[0].fields[0].value) * 4
-        seed = np.random.randint(10000000000, 1000000000000)
+        seed = int(interaction.message.embeds[0].fields[7].value)
 
         attachment_url = interaction.message.attachments[0].url
         f_name = f"{uuid.uuid4()}.png"
@@ -137,7 +137,7 @@ class ImageButtons(discord.ui.View):
         inference_steps = int(interaction.message.embeds[0].fields[3].value)
         guideance_scale = float(interaction.message.embeds[0].fields[4].value)
         negative_prompt = interaction.message.embeds[0].fields[6].value
-        seed = int(interaction.message.embeds[0].fields[7].value)
+        seed = np.random.randint(10000000000, 1000000000000)
 
         width, height, inference_steps, guideance_scale = make_input_safe(
             width, height, inference_steps, guideance_scale)

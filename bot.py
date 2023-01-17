@@ -109,9 +109,12 @@ async def imagine(ctx, prompt: str,
                   guideance_scale: float = 7.5,
                   height: int = 512,
                   width: int = 512,
-                  seed: int = np.random.randint(10000000000, 1000000000000)):
+                  seed: int = None):
 
     await ctx.defer()
+
+    if not seed:
+        seed = np.random.randint(10000000000, 1000000000000)
 
     width, height, inference_steps, guideance_scale = make_input_safe(width,
                                                                       height,
