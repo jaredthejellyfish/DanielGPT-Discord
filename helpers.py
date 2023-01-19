@@ -20,12 +20,14 @@ possible_upscalers = {
     "lapsrn": [2, 4, 8]
 }
 
+
 def check_upscaler(upscaler, scale):
     if upscaler in possible_upscalers.keys():
         if scale in possible_upscalers[upscaler]:
             return True
         else:
             return False
+
 
 def make_input_safe(width, height, inference_steps, guideance_scale):
 
@@ -59,6 +61,33 @@ def make_input_safe(width, height, inference_steps, guideance_scale):
 
     return width, height, inference_steps, guideance_scale
 
+
+def make_input_safe_im2(strength, inference_steps, guideance_scale):
+
+    if inference_steps > 100:
+        logging.warn("InputRectifier: Inference steps maxed at 100")
+        inference_steps = 100
+    elif inference_steps < 1:
+        logging.warn("InputRectifier: Inference steps minned at 1")
+        inference_steps = 1
+
+    if strength > 1:
+        logging.warn("InputRectifier: Guideance scale maxed at 10.0")
+        strength = 1
+    elif strength < 0:
+        logging.warn("InputRectifier: Guideance scale minned at 1.0")
+        strength = 0
+
+    if guideance_scale > 25:
+        logging.warn("InputRectifier: Guideance scale maxed at 10.0")
+        guideance_scale = 25.0
+    elif guideance_scale < 1:
+        logging.warn("InputRectifier: Guideance scale minned at 1.0")
+        guideance_scale = 1.0
+
+    return strength, inference_steps, guideance_scale
+
+
 def make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, width, seed):
 
     base_url = IMG_SERVER_URL
@@ -77,6 +106,24 @@ def make_url(prompt, negative_prompt, inference_steps, guideance_scale, height, 
 
     return base_url
 
+
+def make_url_im2(prompt, negative_prompt, strength, num_inference_steps, guideance_scale):
+
+    base_url = IMG_SERVER_URL
+
+    base_url += f"/img2img?prompt={quote(prompt)}"
+    base_url += f"&strength={strength}"
+    base_url += f"&num_inference_steps={num_inference_steps}"
+    base_url += f"&guidance_scale={guideance_scale}"
+
+    if negative_prompt is not None:
+        base_url += f"&negative_prompt={quote(negative_prompt)}"
+
+    logging.debug(f"Query url is '{base_url}'")
+
+    return base_url
+
+
 def make_embed(prompt, width, height, inference_steps, guideance_scale, negative_prompt, seed):
 
     embed = discord.Embed(title="DanielGPT - StableDiffusionAPI",
@@ -92,11 +139,26 @@ def make_embed(prompt, width, height, inference_steps, guideance_scale, negative
 
     return embed
 
+
+def make_embed_im2(prompt, strength, num_inference_steps, guidance_scale, negative_prompt):
+
+    embed = discord.Embed(title="DanielGPT - Img2ImgAPI",
+                          description=f"{prompt}")
+    embed.add_field(name="Strength", value=strength, inline=True)
+    embed.add_field(name="Inference Steps",
+                    value=num_inference_steps, inline=True)
+    embed.add_field(name="Guideance Scale", value=guidance_scale, inline=True)
+    embed.add_field(name="Negative Prompt", value=negative_prompt, inline=True)
+
+    return embed
+
+
 class ImageButtons(discord.ui.View):
     def __init__(self):
-        super().__init__(timeout=None) # timeout of the view must be set to None
+        super().__init__(timeout=None)  # timeout of the view must be set to None
 
-    @discord.ui.button(label="Upscale", custom_id="upscale", style=discord.ButtonStyle.primary) # the button has a custom_id set
+    # the button has a custom_id set
+    @discord.ui.button(label="Upscale", custom_id="upscale", style=discord.ButtonStyle.primary)
     async def upscale_button_callback(self, button, interaction):
         await interaction.response.defer()
         await interaction.edit_original_response(file=discord.File("./temporary_regen_image.gif"))
@@ -126,7 +188,8 @@ class ImageButtons(discord.ui.View):
                 else:
                     raise Exception("Failed to upscale image.")
 
-    @discord.ui.button(label="Regenerate", custom_id="regenerate", style=discord.ButtonStyle.green) # the button has a custom_id set
+    # the button has a custom_id set
+    @discord.ui.button(label="Regenerate", custom_id="regenerate", style=discord.ButtonStyle.green)
     async def regenerate_button_callback(self, button, interaction):
         await interaction.response.defer()
         await interaction.edit_original_response(file=discord.File("./temporary_regen_image.gif"))
@@ -157,8 +220,8 @@ class ImageButtons(discord.ui.View):
                 else:
                     raise Exception(f"imagine: Error: {response.status}")
 
-
-    @discord.ui.button(label="Freeze", custom_id="freeze", style=discord.ButtonStyle.red) # the button has a custom_id set
+    # the button has a custom_id set
+    @discord.ui.button(label="Freeze", custom_id="freeze", style=discord.ButtonStyle.red)
     async def freeze_button_callback(self, button, interaction):
         await interaction.response.defer()
         for button in self.children:

@@ -14,7 +14,7 @@ from DanielGPT import DanielGPT
 from discord import option
 from discord.ext import commands
 from helpers import (ImageButtons, check_upscaler, make_embed, make_input_safe,
-                     make_url)
+                     make_url, make_input_safe_im2, make_url_im2, make_embed_im2)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -30,6 +30,16 @@ IMG_SERVER_URL = os.getenv("IMG_SERVER_URL")
 memory_depth = int(os.getenv("MEMORY_DEPTH"))
 cap_tokens = int(os.getenv("MAX_TOKENS"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+commands = {
+    "ping": "Pings the bot",
+    "upscale": "Upscales an image.",
+    "imagine": "Generates an image from a prompt.",
+    "transform": "Transforms an image into another image.",
+    "write": "Writes a long text from a prompt.",
+    "code": "Writes code from a prompt.",
+    "help": "Shows this message."
+}
 
 
 @bot.slash_command(name="ping", description="Pings the bot")
@@ -79,7 +89,7 @@ async def upscale(ctx, attachment: discord.Attachment, upscaler: str = "espcn", 
                     if resp.status == 200:
                         # image = io.BytesIO(await resp.read())
                         headers = {
-                            'Authorization': f'Client-ID aa216c6f748dd63'
+                            'Authorization': f'Client-ID {CLIENT_ID}'
                         }
 
                         r = await resp.read()
@@ -142,6 +152,41 @@ async def imagine(ctx, prompt: str,
                 logging.info(f"imageine: Image sent to client.")
             else:
                 raise Exception(f"imageine: Error: {response.status}")
+
+
+@bot.slash_command(name="transform", description="Transforms an image based on a prompt")
+@option(
+    "attachment",
+    discord.Attachment,
+    description="An image to transform",
+    # The default value will be None if the user doesn't provide a file.
+    required=True,
+)
+async def transform(ctx, prompt: str, attachment: discord.Attachment, strength: float = 0.8, num_inference_steps: int = 50, guidance_scale: float = 7.5, negative_prompt: str = None):
+    await ctx.defer()
+
+    strength, num_inference_steps, guidance_scale = make_input_safe_im2(strength,
+                                                                        num_inference_steps,
+                                                                        guidance_scale)
+    transform_url = make_url_im2(
+        prompt, negative_prompt, strength, num_inference_steps, guidance_scale)
+    attachment_url = attachment.url
+
+    f_name = f"{uuid.uuid4()}.png"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(attachment_url) as resp:
+            if resp.status == 200:
+                image_buffer = io.BytesIO(await resp.read())
+                async with session.post(transform_url, data={"image": image_buffer.read()}) as resp:
+                    if resp.status == 200:
+                        pic = discord.File(io.BytesIO(await resp.read()), filename=f_name)
+                        logging.info(f"imagine: Upscaled image.")
+                        await ctx.respond(file=pic, embed=make_embed_im2(prompt, strength, num_inference_steps, guidance_scale, negative_prompt))
+                    else:
+                        raise Exception("Failed to transform image.")
+            else:
+                raise Exception("Failed to fetch image.")
 
 
 @bot.slash_command(name="write", description="Write a prompt")
@@ -225,5 +270,20 @@ async def on_application_command_error(ctx, error):
         )
     else:
         await ctx.respond(f"Error: {error}")
+
+
+@bot.command(name="help", description="Displays a list of all commands and their descriptions")
+async def help_command(ctx):
+    embed = discord.Embed(color=0xF44336)
+    embed.title = "Commands:"
+
+    for command, description in commands.items():
+        embed.add_field(
+            name=f"/{command}",
+            value=description,
+            inline=False,
+        )
+    await ctx.respond(embed=embed)
+
 
 bot.run(DC_API_KEY)
