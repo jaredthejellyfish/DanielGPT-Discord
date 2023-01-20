@@ -38,14 +38,14 @@ commands = {
     "transform": "Transforms an image into another image.",
     "write": "Writes a long text from a prompt.",
     "code": "Writes code from a prompt.",
-    "help": "Shows this message."
+    "iam": "Who am I?",
+    "help": "Shows this message.",
 }
 
 
 @bot.slash_command(name="iam", description="Who am I?")
 async def iam(ctx):
-    await ctx.respond("""I'm DanielGPT, a Discord bot designed to help make your Discord experience easier and more enjoyable.
-    I can answer questions, provide assistance with tasks, and be a friendly presence in the chat.""")
+    await ctx.respond("""I'm DanielGPT, a Discord bot designed to help make your Discord experience easier and more enjoyable.\nI can answer questions, provide assistance with tasks, and be a friendly presence in the chat.""")
 
 
 @bot.slash_command(name="ping", description="Pings the bot")
