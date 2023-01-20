@@ -42,6 +42,12 @@ commands = {
 }
 
 
+@bot.slash_command(name="iam", description="Who am I?")
+async def iam(ctx):
+    await ctx.respond("""I'm DanielGPT, a Discord bot designed to help make your Discord experience easier and more enjoyable.
+    I can answer questions, provide assistance with tasks, and be a friendly presence in the chat.""")
+
+
 @bot.slash_command(name="ping", description="Pings the bot")
 async def ping(ctx):
     """This function is called when the '/ping' command is used. It returns
