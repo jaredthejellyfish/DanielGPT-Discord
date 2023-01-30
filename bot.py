@@ -4,17 +4,14 @@ import json
 import logging
 import os
 import textwrap
-import uuid
 
 import aiohttp
 import discord
-import numpy as np
 import openai
 from DanielGPT import DanielGPT
 from discord import option
 from discord.ext import commands
-from helpers import (ImageButtons, check_upscaler, make_embed, make_input_safe,
-                     make_url, make_input_safe_im2, make_url_im2, make_embed_im2)
+from helpers import (ImageButtons,  make_embed, make_embed_im2, jhml)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,10 +20,9 @@ bot = discord.Bot(intents=intents)
 
 chat_engine = DanielGPT()
 
-CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
+IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 
 DC_API_KEY = os.getenv("DC_API_KEY")
-IMG_SERVER_URL = os.getenv("IMG_SERVER_URL")
 memory_depth = int(os.getenv("MEMORY_DEPTH"))
 cap_tokens = int(os.getenv("MAX_TOKENS"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -74,48 +70,34 @@ async def ping(ctx):
 async def upscale(ctx, attachment: discord.Attachment, upscaler: str = "espcn", scale: int = 2):
     await ctx.defer()
 
-    if check_upscaler(upscaler, scale):
-        if attachment.content_type == "image/png" or attachment.content_type == "image/jpeg":
+    if attachment.content_type == "image/png" or attachment.content_type == "image/jpeg":
+        logging.info(
+        f"upscale: Upscaling image with {upscaler} and scale {scale}.")
 
-            logging.info(
-                f"upscale: Upscaling image with {upscaler} and scale {scale}.")
+        attachment_url = attachment.url
 
-            attachment_url = attachment.url
-            url = f"{IMG_SERVER_URL}/upscale?upscaler={upscaler}&scale={scale}"
-            f_name = f"{uuid.uuid4()}.png"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(attachment_url) as resp:
+                if resp.status == 200:
+                    image_bytesio = io.BytesIO(await resp.read())
+                else:
+                    raise Exception("Failed to fetch image from Discord.")
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(attachment_url) as resp:
-                    if resp.status == 200:
-                        image_buffer = io.BytesIO(await resp.read())
-                    else:
-                        raise Exception("Failed to fetch image from Discord.")
+                image, _ = await jhml.upscale(image_bytesio, upscaler, scale)
+                headers = {
+                            'Authorization': f'Client-ID {IMGUR_CLIENT_ID}'
+                }
 
-                async with session.post(url, data={"image": image_buffer.read()}) as resp:
-                    if resp.status == 200:
-                        # image = io.BytesIO(await resp.read())
-                        headers = {
-                            'Authorization': f'Client-ID {CLIENT_ID}'
-                        }
+                r = image.read()
 
-                        r = await resp.read()
-
-                        payload = {
+                payload = {
                             'image': r,
-                        }
+                    }
 
-                        async with aiohttp.request('post', f"https://api.imgur.com/3/image", headers=headers, data=payload) as resp:
-                            resp.raise_for_status
-                            imgur_response = json.loads(await resp.text())
-                            await ctx.respond(content=imgur_response['data']['link'])
-                    else:
-                        raise Exception("Failed to upscale image.")
-        else:
-            logging.error("upscale: Invalid image type")
-            raise Exception("Invalid image type")
-    else:
-        logging.error("upscale: Invalid upscaler or scale")
-        raise Exception("Invalid upscaler or scale")
+                async with aiohttp.request('post', f"https://api.imgur.com/3/image", headers=headers, data=payload) as resp:
+                    resp.raise_for_status
+                    imgur_response = json.loads(await resp.text())
+                    await ctx.respond(content=imgur_response['data']['link'])
 
 
 @bot.slash_command(name="imagine", description="Imagines a prompt")
@@ -129,35 +111,17 @@ async def imagine(ctx, prompt: str,
 
     await ctx.defer()
 
-    if not seed:
-        seed = np.random.randint(10000000000, 1000000000000)
-
-    width, height, inference_steps, guideance_scale = make_input_safe(width,
-                                                                      height,
-                                                                      inference_steps,
-                                                                      guideance_scale)
-
     embed = make_embed(prompt, width, height, inference_steps,
                        guideance_scale, negative_prompt, seed)
-
-    url = make_url(prompt, negative_prompt, inference_steps,
-                   guideance_scale, height, width, seed)
 
     message = await ctx.respond(embed=embed)
     logging.info(f'imageine: Generating image with prompt: "{prompt}".')
 
-    f_name = f"{uuid.uuid4()}.png"
-    async with aiohttp.ClientSession() as session:
-        logging.info(f"imageine: Fetching image...")
-        async with session.get(url) as response:
-            if response.status == 200:
-                logging.info(f"imageine: Image received.")
-                pic = discord.File(io.BytesIO(await response.read()), filename=f_name)
-                logging.info(f"imageine: Converted image to discord.File.")
-                await message.edit(view=ImageButtons(), embed=embed, file=pic)
-                logging.info(f"imageine: Image sent to client.")
-            else:
-                raise Exception(f"imageine: Error: {response.status}")
+    image, f_name = await jhml.generate(prompt, inference_steps, guideance_scale, negative_prompt, height, width, seed)
+
+    pic = discord.File(image, filename=f_name)
+
+    await message.edit(view=ImageButtons(), embed=embed, file=pic)
 
 
 @bot.slash_command(name="transform", description="Transforms an image based on a prompt")
@@ -171,26 +135,17 @@ async def imagine(ctx, prompt: str,
 async def transform(ctx, prompt: str, attachment: discord.Attachment, strength: float = 0.8, num_inference_steps: int = 50, guidance_scale: float = 7.5, negative_prompt: str = None):
     await ctx.defer()
 
-    strength, num_inference_steps, guidance_scale = make_input_safe_im2(strength,
-                                                                        num_inference_steps,
-                                                                        guidance_scale)
-    transform_url = make_url_im2(
-        prompt, negative_prompt, strength, num_inference_steps, guidance_scale)
     attachment_url = attachment.url
-
-    f_name = f"{uuid.uuid4()}.png"
 
     async with aiohttp.ClientSession() as session:
         async with session.get(attachment_url) as resp:
             if resp.status == 200:
                 image_buffer = io.BytesIO(await resp.read())
-                async with session.post(transform_url, data={"image": image_buffer.read()}) as resp:
-                    if resp.status == 200:
-                        pic = discord.File(io.BytesIO(await resp.read()), filename=f_name)
-                        logging.info(f"imagine: Upscaled image.")
-                        await ctx.respond(file=pic, embed=make_embed_im2(prompt, strength, num_inference_steps, guidance_scale, negative_prompt))
-                    else:
-                        raise Exception("Failed to transform image.")
+                image, f_name = await jhml.img2img(image_buffer, prompt, strength, num_inference_steps, guidance_scale, negative_prompt)
+                pic = discord.File(image, filename=f_name)
+                logging.info(f"imagine: Upscaled image.")
+                await ctx.respond(file=pic, embed=make_embed_im2(prompt, strength, num_inference_steps, guidance_scale, negative_prompt))
+
             else:
                 raise Exception("Failed to fetch image.")
 
