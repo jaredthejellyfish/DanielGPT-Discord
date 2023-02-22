@@ -4,6 +4,7 @@ import json
 import logging
 import discord
 import aiohttp
+import tiktoken
 
 from jellyhost_ml import JellyHostML
 from jellyhost_ml.danielgpt import make_embed, make_embed_im2
@@ -15,6 +16,11 @@ IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
 UPSCALER = os.getenv("UPSCALER")
 jhml = JellyHostML(IMG_SERVER_URL)
 
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
 
 class ImageButtons(discord.ui.View):
     def __init__(self):

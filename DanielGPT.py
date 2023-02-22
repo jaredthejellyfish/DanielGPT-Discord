@@ -1,5 +1,5 @@
 import re
-
+from helpers import num_tokens_from_string
 import discord
 import openai
 
@@ -66,7 +66,7 @@ class DanielGPT:
         length_adjusted_messages = []
         for message in messages:
             length_adjusted_messages.append(message)
-            count += int(len(message) * 0.75)
+            count += num_tokens_from_string(message, "text-davinci-003")
             if count > self.cap_tokens:
                 break
 
