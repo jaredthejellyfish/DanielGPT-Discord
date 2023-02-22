@@ -18,7 +18,7 @@ jhml = JellyHostML(IMG_SERVER_URL)
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
+    encoding = tiktoken.get_encoding(tiktoken.encoding_for_model("text-davinci-003").name)
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
