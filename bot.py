@@ -276,7 +276,7 @@ async def on_message(ctx: discord.ApplicationContext):
                 # message(self, message: str, author: str, conversation_id: str)
                 conversation_id = str(ctx.channel.id)
                 author = "user"
-                message = ctx.content.replace(mention, "@DanielGPT").strip()
+                message = ctx.content.replace(mention, "DanielGPT").strip()
                 logging.info(f"message='{message}'")
                 response = await daniel.message(message, author, conversation_id)
                 logging.info(f"response='{response}'")
