@@ -270,10 +270,9 @@ async def on_message(ctx: discord.ApplicationContext):
 
     mention = f"<@{bot.user.id}>"
 
-    async with ctx.channel.typing():
-        try:
-            if mention in ctx.content or isinstance(ctx.channel, discord.channel.DMChannel):
-                # message(self, message: str, author: str, conversation_id: str)
+    try:
+        if mention in ctx.content or isinstance(ctx.channel, discord.channel.DMChannel):
+            async with ctx.channel.typing():
                 conversation_id = str(ctx.channel.id)
                 author = "user"
                 message = ctx.content.replace(mention, "DanielGPT").strip()
@@ -282,9 +281,9 @@ async def on_message(ctx: discord.ApplicationContext):
                 logging.info(f"response='{response}'")
                 await ctx.channel.send(response)
 
-        except Exception as e:
-            logging.error(e)
-            await ctx.channel.send(f"Error: {e}")
+    except Exception as e:
+        logging.error(e)
+        await ctx.channel.send(f"Error: {e}")
 
 
 @bot.event
