@@ -4,7 +4,7 @@ import discord
 import openai
 
 
-class DanielGPT:
+class OldDanielGPT:
     async def run(self, ctx, bot, memory_depth, cap_tokens):
         """
         This method takes in a discord context, a bot, a memory depth, and a token cap.
